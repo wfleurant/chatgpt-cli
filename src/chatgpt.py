@@ -154,7 +154,7 @@ def start_prompt(session: PromptSession, config: dict) -> None:
     global prompt_tokens, completion_tokens
 
     headers = {
-        "Content-Type": "application/json",
+        "Content-Type":  f"application/json",
         "Authorization": f"Bearer {config['api-key']}",
     }
 
@@ -169,9 +169,9 @@ def start_prompt(session: PromptSession, config: dict) -> None:
 
     # Base body parameters
     body = {
-        "model": config["model"],
+        "model":       config["model"],
         "temperature": config["temperature"],
-        "messages": messages,
+        "messages":    messages,
     }
     # Optional parameter
     if "max_tokens" in config:
@@ -194,7 +194,7 @@ def start_prompt(session: PromptSession, config: dict) -> None:
         response = r.json()
 
         message_response = response["choices"][0]["message"]
-        usage_response = response["usage"]
+        usage_response   = response["usage"]
 
         console.line()
         if config["markdown"]:
