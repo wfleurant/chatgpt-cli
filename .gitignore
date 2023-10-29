@@ -163,3 +163,4 @@ cython_debug/
 
 # Session history
 session-history/
+config.yaml
