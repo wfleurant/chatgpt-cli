@@ -17,13 +17,16 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.pretty import pprint
 
-BASE = Path(xdg_config_home(), "chatgpt-cli")
-CONFIG_FILE = BASE / "config.yaml"
-HISTORY_FILE = BASE / "history"
-SAVE_FOLDER = BASE / "session-history"
-SAVE_FILE = (
-    "chatgpt-session-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".json"
-)
+WORKDIR = Path(__file__).parent
+CONFIG_FILE = Path(WORKDIR, "../config.yaml")
+BASE_ENDPOINT = "https://api.openai.com/v1"
+ENV_VAR = "OPENAI_API_KEY"
+SAVE_FOLDER = "session-history"
+
+file_path = os.path.abspath(__file__)
+real_path = os.path.realpath(file_path)
+WORKDIR = Path(real_path).parent
+
 BASE_ENDPOINT = "https://api.openai.com/v1"
 ENV_VAR = "OPENAI_API_KEY"
 
@@ -204,17 +207,6 @@ def start_prompt(session: PromptSession, config: dict) -> None:
         messages.append(message_response)
         prompt_tokens += usage_response["prompt_tokens"]
         completion_tokens += usage_response["completion_tokens"]
-        with open(os.path.join(SAVE_FOLDER, SAVE_FILE), "w") as f:
-            json.dump(
-                {
-                    "model": config["model"],
-                    "messages": messages,
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                },
-                f,
-                indent=4,
-            )
 
     elif r.status_code == 400:
         response = r.json()
@@ -258,23 +250,11 @@ def start_prompt(session: PromptSession, config: dict) -> None:
 @click.option("-k", "--key", "api_key", help="Set the API Key")
 @click.option("-m", "--model", "model", help="Set the model")
 @click.option(
-    "-ml", "--multiline", "multiline", is_flag=True, help="Use the multiline input mode"
+    "-ml", "--multiline", "multiline", is_flag=True,
+    help="Use the multiline input mode"
 )
-@click.option(
-    "-r",
-    "--restore",
-    "restore",
-    help="Restore a previous chat session (input format: YYYYMMDD-hhmmss or 'last')",
-)
-def main(context, api_key, model, multiline, restore) -> None:
-    console.print("ChatGPT CLI", style="bold")
 
-    history = FileHistory(HISTORY_FILE)
-
-    if multiline:
-        session = PromptSession(history=history, multiline=True)
-    else:
-        session = PromptSession(history=history)
+def main(context, api_key, model, multiline) -> None:
 
     try:
         config = load_config(CONFIG_FILE)
@@ -282,7 +262,12 @@ def main(context, api_key, model, multiline, restore) -> None:
         console.print("Configuration file not found", style="red bold")
         sys.exit(1)
 
-    create_save_folder()
+    if multiline:
+        pass
+    else:
+        multiline = config['multiline'] if 'multiline' in config else False
+
+    session = PromptSession(multiline=multiline)
 
     # Order of precedence for API Key configuration:
     # Command line option > Environment variable > Configuration file
@@ -311,26 +296,6 @@ def main(context, api_key, model, multiline, restore) -> None:
         for c in context:
             console.print(f"Context file: [green bold]{c.name}")
             messages.append({"role": "system", "content": c.read().strip()})
-
-    # Restore a previous session
-    if restore:
-        if restore == "last":
-            last_session = get_last_save_file()
-            restore_file = f"chatgpt-session-{last_session}.json"
-        else:
-            restore_file = f"chatgpt-session-{restore}.json"
-        try:
-            global prompt_tokens, completion_tokens
-            # If this feature is used --context is cleared
-            messages.clear()
-            history_data = load_history_data(os.path.join(SAVE_FOLDER, restore_file))
-            for message in history_data["messages"]:
-                messages.append(message)
-            prompt_tokens += history_data["prompt_tokens"]
-            completion_tokens += history_data["completion_tokens"]
-            console.print(f"Restored session: [bold green]{restore}")
-        except FileNotFoundError:
-            console.print(f"[red bold]File {restore_file} not found")
 
     console.rule()
 
