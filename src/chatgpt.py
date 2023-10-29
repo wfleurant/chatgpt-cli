@@ -141,9 +141,8 @@ def display_expense(model: str) -> None:
         PRICING_RATE[model]["completion"],
     )
     console.print(
-        f"\nTotal tokens used: [green bold]{prompt_tokens + completion_tokens}"
+        f"\n[green bold][{prompt_tokens + completion_tokens}] 🖕 ${total_expense}"
     )
-    console.print(f"Estimated expense: [green bold]${total_expense}")
 
 
 def start_prompt(session: PromptSession, config: dict) -> None:
@@ -211,13 +210,36 @@ def start_prompt(session: PromptSession, config: dict) -> None:
 
     elif r.status_code == 400:
         response = r.json()
-        if "error" in response:
-            if response["error"]["code"] == "context_length_exceeded":
-                console.print("Maximum context length exceeded", style="red bold")
+
+        try:
+            if "error" in response:
+                try:
+                    err_codeword, err_message = response["error"]["code"], response["error"]["message"]
+                    raise KeyError
+                except KeyError:
+                    console.print(f"Invalid request please review API response:", style="bold red")
+                    pprint(response)
+                    raise EOFError
+            else:
+                raise AssertionError
+
+        except AssertionError:
+            console.print(f"Invalid request and could not find error details in API 404 response:", style="bold red")
+            pprint(response)
+            raise EOFError
+
+        if err_codeword == "context_length_exceeded":
+            try:
+                m = r"This model's maximum context length is (?P<a>\d+) tokens.*?your messages resulted in (?P<b>\d+) tokens"
+                re_ctx_msg = re.search(m, err_message).groupdict()
+
+                ctx_maxlen, ctx_putlen, ctx_exceed = re_ctx_msg['a'], re_ctx_msg['b'], int(re_ctx_msg['b']) - int(re_ctx_msg['a'])
+                console.print(f"Maximum context length ({ctx_maxlen}) exceeded. Try reducing {ctx_exceed} from the source total ({ctx_putlen})", style="red bold")
                 raise EOFError
-                # TODO: Develop a better strategy to manage this case
-        console.print("Invalid request", style="bold red")
-        raise EOFError
+
+            except Exception as e:
+                console.print("Maximum context length exceeded.", style="red bold")
+                raise EOFError
 
     elif r.status_code == 401:
         console.print("Invalid API Key", style="bold red")
@@ -286,7 +308,7 @@ def main(context, api_key, model, multiline) -> None:
     # Run the display expense function when exiting the script
     atexit.register(display_expense, model=config["model"])
 
-    console.print(f"Model in use: [green bold]{config['model']}")
+    console.print(f"skynet: [green bold]activated")
 
     # Add the system message for code blocks in case markdown is enabled in the config file
     if config["markdown"]:
