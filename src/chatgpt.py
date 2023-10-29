@@ -18,7 +18,6 @@ from rich.markdown import Markdown
 from rich.pretty import pprint
 
 WORKDIR = Path(__file__).parent
-CONFIG_FILE = Path(WORKDIR, "../config.yaml")
 BASE_ENDPOINT = "https://api.openai.com/v1"
 ENV_VAR = "OPENAI_API_KEY"
 SAVE_FOLDER = "session-history"
@@ -26,6 +25,7 @@ SAVE_FOLDER = "session-history"
 file_path = os.path.abspath(__file__)
 real_path = os.path.realpath(file_path)
 WORKDIR = Path(real_path).parent
+CONFIG_FILE = Path(WORKDIR, "../config.yaml")
 
 BASE_ENDPOINT = "https://api.openai.com/v1"
 ENV_VAR = "OPENAI_API_KEY"
@@ -57,15 +57,7 @@ def load_config(config_file: str) -> dict:
     Read a YAML config file and returns it's content as a dictionary
     """
     if not Path(config_file).exists():
-        config_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(config_file, "w") as file:
-            file.write(
-                'api-key: "INSERT API KEY HERE"\n' + 'model: "gpt-3.5-turbo"\n'
-                "temperature: 1\n"
-                "#max_tokens: 500\n"
-                "markdown: true\n"
-            )
-        console.print(f"New config file initialized: [green bold]{config_file}")
+        raise FileNotFoundError("No config.yaml found")
 
     with open(config_file) as file:
         config = yaml.load(file, Loader=yaml.FullLoader)
@@ -82,25 +74,6 @@ def load_history_data(history_file: str) -> dict:
 
     return content
 
-
-def get_last_save_file() -> str:
-    """
-    Return the timestamp of the last saved session
-    """
-    files = [f for f in os.listdir(SAVE_FOLDER) if f.endswith(".json")]
-    if files:
-        ts = [f.replace("chatgpt-session-", "").replace(".json", "") for f in files]
-        ts.sort()
-        return ts[-1]
-    return None
-
-
-def create_save_folder() -> None:
-    """
-    Create the session history folder if not exists
-    """
-    if not os.path.exists(SAVE_FOLDER):
-        os.mkdir(SAVE_FOLDER)
 
 
 def add_markdown_system_message() -> None:
@@ -327,7 +300,7 @@ def main(context, api_key, model, multiline) -> None:
             start_prompt(session, config)
         except KeyboardInterrupt:
             continue
-        except EOFError:
+        except EOFError as e:
             break
 
 
