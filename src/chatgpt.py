@@ -14,7 +14,6 @@ from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.markdown import Markdown
-from xdg_base_dirs import xdg_config_home
 
 BASE = Path(xdg_config_home(), "chatgpt-cli")
 CONFIG_FILE = BASE / "config.yaml"
