@@ -75,7 +75,6 @@ def load_history_data(history_file: str) -> dict:
     return content
 
 
-
 def add_markdown_system_message() -> None:
     """
     Try to force ChatGPT to always respond with well formatted code blocks and tables if markdown is enabled.
@@ -128,6 +127,7 @@ def start_prompt(session: PromptSession, config: dict) -> None:
 
     headers = {
         "Content-Type":  f"application/json",
+        "User-Agent":    f"Mozilla/5.0",
         "Authorization": f"Bearer {config['api-key']}",
     }
 
@@ -154,7 +154,8 @@ def start_prompt(session: PromptSession, config: dict) -> None:
         r = requests.post(
             f"{BASE_ENDPOINT}/chat/completions", headers=headers, json=body
         )
-    except requests.ConnectionError:
+    except requests.ConnectionError as e:
+        print(e)
         console.print("Connection error, try again...", style="red bold")
         messages.pop()
         raise KeyboardInterrupt
@@ -206,8 +207,15 @@ def start_prompt(session: PromptSession, config: dict) -> None:
                 m = r"This model's maximum context length is (?P<a>\d+) tokens.*?your messages resulted in (?P<b>\d+) tokens"
                 re_ctx_msg = re.search(m, err_message).groupdict()
 
-                ctx_maxlen, ctx_putlen, ctx_exceed = re_ctx_msg['a'], re_ctx_msg['b'], int(re_ctx_msg['b']) - int(re_ctx_msg['a'])
-                console.print(f"Maximum context length ({ctx_maxlen}) exceeded. Try reducing {ctx_exceed} from the source total ({ctx_putlen})", style="red bold")
+                ctx_maxlen, ctx_putlen, ctx_exceed = (
+                    re_ctx_msg["a"],
+                    re_ctx_msg["b"],
+                    int(re_ctx_msg["b"]) - int(re_ctx_msg["a"]),
+                )
+                console.print(
+                    f"Maximum context length ({ctx_maxlen}) exceeded. Try reducing {ctx_exceed} from the source total ({ctx_putlen})",
+                    style="red bold",
+                )
                 raise EOFError
 
             except Exception as e:
@@ -222,7 +230,7 @@ def start_prompt(session: PromptSession, config: dict) -> None:
         console.print("Rate limit or maximum monthly limit exceeded", style="bold red")
         messages.pop()
         raise KeyboardInterrupt
-    
+
     elif r.status_code == 502 or r.status_code == 503:
         console.print("The server seems to be overloaded, try again", style="bold red")
         messages.pop()
@@ -261,7 +269,7 @@ def main(context, api_key, model, multiline) -> None:
     if multiline:
         pass
     else:
-        multiline = config['multiline'] if 'multiline' in config else False
+        multiline = config["multiline"] if "multiline" in config else False
 
     session = PromptSession(multiline=multiline)
 
