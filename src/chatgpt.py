@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 
 import atexit
 import click
@@ -8,12 +8,14 @@ import requests
 import sys
 import yaml
 import json
+import re
 
 from pathlib import Path
 from prompt_toolkit import PromptSession, HTML
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.pretty import pprint
 
 BASE = Path(xdg_config_home(), "chatgpt-cli")
 CONFIG_FILE = BASE / "config.yaml"
